@@ -26,7 +26,7 @@ export async function downloadChart(snapshot: ElectionSnapshot, history: readonl
     const time = formatTime(snapshot.generatedAt).replaceAll(':', '-')
     const link = document.createElement('a')
     link.href = url
-    link.download = `apuracao-presidente_${date}_${time}.png`
+    link.download = `apuracao-presidente_${snapshot.scope ?? 'br'}_${date}_${time}.png`
     link.hidden = true
     document.body.append(link)
     try {

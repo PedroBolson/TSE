@@ -2,20 +2,23 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { HISTORY_STORAGE_KEY } from '../config.ts'
 import { mergeCloudHistory, newerSnapshot, restoreHistory } from '../domain/election.ts'
 import type { ElectionSnapshot } from '../domain/election.ts'
+import type { ElectionScope } from '../domain/regions.ts'
 import { readLatestFromServer, subscribeToElection } from '../services/electionStore.ts'
 import type { CollectorStatus } from '../services/electionStore.ts'
 
-function savedHistory() {
+const storageKey = (scope: ElectionScope) => scope === 'br' ? HISTORY_STORAGE_KEY : `apuracao-tse:6258:${scope}:history:v1`
+
+function savedHistory(scope: ElectionScope) {
   try {
-    return restoreHistory(localStorage.getItem(HISTORY_STORAGE_KEY))
+    return restoreHistory(localStorage.getItem(storageKey(scope)))
   } catch {
     return []
   }
 }
 
-export function useElectionResults() {
+export function useElectionResults(scope: ElectionScope = 'br') {
   const [snapshot, setSnapshot] = useState<ElectionSnapshot | null>(null)
-  const [history, setHistory] = useState(savedHistory)
+  const [history, setHistory] = useState(() => savedHistory(scope))
   const [isFetching, setIsFetching] = useState(true)
   const [connectionError, setConnectionError] = useState<string | null>(null)
   const [collectorError, setCollectorError] = useState<string | null>(null)
@@ -26,11 +29,11 @@ export function useElectionResults() {
 
   useEffect(() => {
     try {
-      localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(history))
+      localStorage.setItem(storageKey(scope), JSON.stringify(history))
     } catch {
       // A assinatura da nuvem continua mesmo sem armazenamento no navegador.
     }
-  }, [history])
+  }, [history, scope])
 
   useEffect(() => {
     let disposed = false
@@ -60,12 +63,12 @@ export function useElectionResults() {
       setConnectionError('Não foi possível sincronizar com o Firestore. Os dados já recebidos continuam visíveis.')
     }
 
-    const unsubscribe = subscribeToElection({ onResults: acceptResults, onStatus: acceptStatus, onError: reportError })
+    const unsubscribe = subscribeToElection({ onResults: acceptResults, onStatus: acceptStatus, onError: reportError }, scope)
     refreshRef.current = () => {
       if (disposed || manualRefreshRunning) return
       manualRefreshRunning = true
       setIsFetching(true)
-      void readLatestFromServer().then(({ results, status }) => {
+      void readLatestFromServer(scope).then(({ results, status }) => {
         if (disposed) return
         acceptResults(results)
         acceptStatus(status, false)
@@ -79,7 +82,7 @@ export function useElectionResults() {
       unsubscribe()
       refreshRef.current = () => {}
     }
-  }, [])
+  }, [scope])
 
   const refresh = useCallback(() => refreshRef.current(), [])
   return { snapshot, history, isFetching, error: connectionError ?? collectorError, lastSuccessAt, isFromCache, refresh }

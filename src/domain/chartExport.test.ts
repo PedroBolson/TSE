@@ -62,3 +62,12 @@ test('a exportação aproxima o eixo com a mesma faixa informada na imagem', () 
   assert.equal(firstYs.length, 2)
   assert.ok(Math.abs(firstYs[0] - firstYs[1]) > 20)
 })
+
+
+test('a exportação estadual identifica a UF sem alterar o histórico nacional', () => {
+  const regional = { ...snapshot, scope: 'rs' as const }
+  const svg = buildChartSvg(regional, [point])
+  assert.ok(svg.includes('RIO GRANDE DO SUL'))
+  assert.ok(svg.includes('Apuração · Rio Grande do Sul'))
+  assert.ok(buildChartSvg(snapshot, [point]).includes('Apuração presidencial'))
+})

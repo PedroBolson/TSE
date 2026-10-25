@@ -1,8 +1,9 @@
 import { ArrowUpRight, ChartNoAxesColumnIncreasing, CircleAlert, CircleCheck, Clock3, Download, ExternalLink, RefreshCw } from 'lucide-react'
-import { STALE_AFTER_MS, TSE_PORTAL_URL, TSE_RESULTS_URL } from '../config.ts'
+import { CHART_START_AT, STALE_AFTER_MS, TSE_PORTAL_URL, TSE_RESULTS_URL } from '../config.ts'
 import { CandidateCard } from '../components/CandidateCard.tsx'
 import { CountingProgress } from '../components/CountingProgress.tsx'
 import { HistoryChart } from '../components/HistoryChart.tsx'
+import { RegionalExplorer } from '../components/RegionalExplorer.tsx'
 import { useElectionResults } from '../hooks/useElectionResults.ts'
 import { useNow } from '../hooks/useNow.ts'
 import { downloadChart } from '../utils/downloadChart.ts'
@@ -10,6 +11,7 @@ import { elapsedLabel, formatDate, formatNumber, formatPercent, formatTime } fro
 
 export function App() {
   const { snapshot, history, isFetching, error, lastSuccessAt, isFromCache, refresh } = useElectionResults()
+  const chartHistory = history.filter((point) => point.timestamp >= CHART_START_AT)
   const now = useNow()
   const [isExporting, setIsExporting] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
@@ -30,7 +32,7 @@ export function App() {
     setIsExporting(true)
     setExportError(null)
     try {
-      await downloadChart(snapshot, history)
+      await downloadChart(snapshot, chartHistory)
     } catch {
       setExportError('Não foi possível gerar a imagem. Tente exportar novamente.')
     } finally {
@@ -123,7 +125,7 @@ export function App() {
             </section>
 
             <div className="details-grid">
-              <HistoryChart history={history} />
+              <HistoryChart history={chartHistory} />
               <CountingProgress snapshot={snapshot} />
             </div>
           </>
@@ -135,6 +137,8 @@ export function App() {
               : 'Os resultados aparecem automaticamente assim que o coletor registrar uma parcial do TSE.'}</p>
           </section>
         )}
+
+        <RegionalExplorer national={snapshot} />
 
         <footer className="page-footer">
           <div>

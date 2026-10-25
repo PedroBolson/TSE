@@ -3,7 +3,7 @@ import type { HistoryPoint } from '../domain/election.ts'
 import { formatAxisPercent, getChartScale } from '../domain/chartScale.ts'
 import { formatPercent, formatShortTime, formatTime } from '../utils/format.ts'
 
-export function HistoryChart({ history }: { history: HistoryPoint[] }) {
+export function HistoryChart({ history, headingId = 'history-title' }: { history: HistoryPoint[], headingId?: string }) {
   const scale = getChartScale(history)
   const scaleLabel = `Escala automática: ${formatAxisPercent(scale.domain[0])} a ${formatAxisPercent(scale.domain[1])}.`
   const first = history[0]
@@ -13,11 +13,11 @@ export function HistoryChart({ history }: { history: HistoryPoint[] }) {
     : undefined
 
   return (
-    <section className="panel history-panel" aria-labelledby="history-title">
+    <section className="panel history-panel" aria-labelledby={headingId}>
       <div className="panel-heading">
         <div>
           <span className="eyebrow">PARCIAL A PARCIAL</span>
-          <h2 id="history-title">Evolução dos percentuais</h2>
+          <h2 id={headingId}>Evolução dos percentuais</h2>
         </div>
         <span className="subtle-badge">{history.length} {history.length === 1 ? 'registro' : 'registros'}</span>
       </div>
@@ -65,7 +65,7 @@ export function HistoryChart({ history }: { history: HistoryPoint[] }) {
         {history.length > 0 && <span className="chart-scale-note">{scaleLabel}</span>}
         {history.length === 1
           ? 'Primeira parcial registrada. A linha aparece quando chegar uma nova parcial.'
-          : 'Histórico da coleta na nuvem e das parciais salvas neste navegador.'}
+          : 'Parciais desde as 19h. Os registros anteriores continuam salvos.'}
       </p>
     </section>
   )

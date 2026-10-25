@@ -8,3 +8,6 @@ export const REQUEST_TIMEOUT_MS = 15_000
 export const MAX_RETRY_INTERVAL_MS = 300_000
 export const STALE_AFTER_MS = 180_000
 export const HISTORY_STORAGE_KEY = 'apuracao-tse:6258:history:v1'
+
+// Oculta no gráfico o bloco inicial anterior à retomada da apuração. O histórico permanece salvo.
+export const CHART_START_AT = Date.parse('2026-10-25T19:00:00-03:00')

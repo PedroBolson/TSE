@@ -19,15 +19,25 @@ A interface local, normalmente em `http://localhost:5173`, usa o mesmo Firestore
 
 - Uma Cloud Function de segunda geração, `collectTseResults`, roda a cada minuto em `southamerica-east1`, a mesma região do Firestore.
 - O coletor usa 256 MiB, CPU fracionada, nenhuma instância mínima e no máximo uma instância. Cada consulta ao TSE tem limite de 15 segundos; a função, de 30 segundos.
-- Cada identificador de parcial do TSE vira um único documento em `elections/6258/partials/{idg}`. A transação evita duplicatas e preserva o arquivo original do TSE.
+- No consolidado nacional, cada identificador de parcial do TSE vira um único documento em `elections/6258/partials/{idg}`. A transação evita duplicatas e preserva o arquivo original do TSE.
 - O documento `elections/6258` informa a última coleta bem-sucedida, a última parcial e possíveis erros. Uma resposta antiga de cache não faz a referência atual regredir.
 - Em respostas HTTP 403 ou 429, o coletor espera 10 minutos antes de consultar o TSE novamente.
 - O navegador só lê o Firestore. As regras permitem leitura dos resultados dessa eleição e bloqueiam gravação pelo cliente; a função usa o Admin SDK.
 - Os percentuais são os publicados pelo TSE para votos válidos. Brancos e nulos aparecem separados do total de votos válidos.
-- O painel mostra as últimas 720 parciais, mas a coleção na nuvem preserva todas as parciais que o coletor gravou.
+- O painel lê as últimas 720 parciais de cada abrangência, mas as coleções na nuvem preservam todas as parciais gravadas. O gráfico e o PNG exibem apenas as parciais desde as 19h de 25/10/2026 (`CHART_START_AT`); as anteriores continuam no banco e no histórico local.
 - O horário em destaque é o da geração do arquivo pelo TSE, em Brasília. O rodapé informa o horário da última consulta bem-sucedida do coletor.
 - O botão **Sincronizar agora** relê os dados do banco. Ele não dispara uma consulta extra ao TSE.
 - O Firebase Analytics não é necessário para esse acompanhamento e não é inicializado.
+
+## Resultados por estado
+
+O mesmo coletor consulta as 27 UFs e o exterior (`zz`) a cada minuto, além do consolidado Brasil. As requisições estaduais têm no máximo quatro consultas simultâneas. Falhas de uma UF não impedem as demais; HTTP 403/429 interrompe novas consultas e aplica a pausa de 10 minutos. Cada abrangência encerra suas consultas quando o respectivo arquivo informa `and=f`.
+
+O último resultado estadual fica em `elections/6258/regions/{uf}`, e cada parcial é preservada em `elections/6258/regions/{uf}/partials/{idg}`. O resumo estadual só é regravado quando chega uma parcial diferente ou quando uma falha é resolvida. O histórico anterior à ativação da coleta estadual não é reconstruído.
+
+O mapa usa malha simplificada oficial do IBGE, incluída no projeto em `src/data/statePaths.ts`, e cores pela liderança na parcial. Clicar numa UF ou na opção Exterior abre votos, percentuais, seções, horário e evolução. O painel escuta os resumos estaduais em tempo real e carrega o histórico detalhado somente da região selecionada. O armazenamento local de cada UF tem uma chave própria, sem misturar pontos com Brasil ou outras UFs.
+
+A soma regional inclui o exterior quando disponível. Percentuais e andamento são calculados a partir das somas dos votos válidos e das seções, sem média simples dos percentuais. A cobertura e os horários são exibidos: essa soma pode diferir do consolidado oficial Brasil, que continua sendo a fonte dos cartões nacionais.
 
 ## Encerrar a coleta
 

@@ -122,3 +122,13 @@ test('combina parciais da nuvem com o histórico local, preenchendo lacunas sem 
   assert.equal(local.length, 2)
   assert.equal(mergeCloudHistory(merged, [first, second, third]).length, 3)
 })
+
+
+test('a leitura estadual exige a UF certa e mantém o isolamento do Brasil', () => {
+  const rs = { ...fixture(), cdabr: 'rs' }
+  assert.equal(parseTseResults(rs, 'rs').scope, 'rs')
+  assert.throws(() => parseTseResults(rs), /não corresponde/)
+  assert.throws(() => parseTseResults(rs, 'sp'), /não corresponde/)
+  assert.throws(() => parseTseResults(fixture(), 'rs'), /não corresponde/)
+  assert.equal(parseTseResults({ ...fixture(), cdabr: 'zz' }, 'zz').scope, 'zz')
+})

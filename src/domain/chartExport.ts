@@ -1,5 +1,6 @@
 import type { Candidate, ElectionSnapshot, HistoryPoint } from './election.ts'
 import { formatAxisPercent, getChartScale } from './chartScale.ts'
+import { scopeName } from './regions.ts'
 import { formatDate, formatNumber, formatPercent, formatShortTime, formatTime } from '../utils/format.ts'
 
 export const CHART_IMAGE_WIDTH = 1600
@@ -53,8 +54,8 @@ export function buildChartSvg(snapshot: ElectionSnapshot, history: readonly Hist
     '<title>Apuração presidencial de 2026: percentuais, votos e evolução</title>',
     `<desc>Fonte: TSE. Parcial de ${escapeXml(formatDate(snapshot.generatedAt))} às ${escapeXml(formatTime(snapshot.generatedAt))}, horário de Brasília. Histórico de ${history.length} parciais registradas no acompanhamento.</desc>`,
     `<rect width="${CHART_IMAGE_WIDTH}" height="${CHART_IMAGE_HEIGHT}" fill="#111518"/>`,
-    text(72, 60, 'ELEIÇÕES 2026  /  BRASIL  /  2º TURNO', 15, '#b8dfb2'),
-    text(72, 111, 'Apuração presidencial', 38, '#edf0ed', 'start', 600),
+    text(72, 60, `ELEIÇÕES 2026  /  ${scopeName(snapshot.scope ?? 'br').toUpperCase()}  /  2º TURNO`, 15, '#b8dfb2'),
+    text(72, 111, snapshot.scope && snapshot.scope !== 'br' ? `Apuração · ${scopeName(snapshot.scope)}` : 'Apuração presidencial', 38, '#edf0ed', 'start', 600),
     text(1528, 60, 'PARCIAL GERADA PELO TSE', 13, '#97a3a8', 'end'),
     text(1528, 95, `${formatDate(snapshot.generatedAt)} · ${formatTime(snapshot.generatedAt)}`, 24, '#edf0ed', 'end'),
     text(1528, 121, `${snapshot.finished ? 'Resultado final' : 'Resultado parcial'} · Horário de Brasília`, 14, '#97a3a8', 'end'),

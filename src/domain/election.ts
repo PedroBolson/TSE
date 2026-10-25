@@ -1,3 +1,6 @@
+import { isRegionCode } from './regions.ts'
+import type { ElectionScope } from './regions.ts'
+
 export type CandidateKey = 'flavio' | 'lula'
 
 export interface Candidate {
@@ -10,6 +13,7 @@ export interface Candidate {
 }
 
 export interface ElectionSnapshot {
+  scope?: ElectionScope
   id: string
   generatedAt: number
   candidates: [Candidate, Candidate]
@@ -89,9 +93,9 @@ function brazilTimestamp(date: unknown, time: unknown): number {
   return wallClock.getTime() + 3 * 60 * 60 * 1_000
 }
 
-export function parseTseResults(payload: unknown): ElectionSnapshot {
+export function parseTseResults(payload: unknown, scope: ElectionScope = 'br'): ElectionSnapshot {
   const data = object(payload)
-  if (data.ele !== '6258' || data.t !== '2' || data.f !== 'o' || data.cdabr !== 'br') {
+  if (data.ele !== '6258' || data.t !== '2' || data.f !== 'o' || data.cdabr !== scope || (scope !== 'br' && !isRegionCode(scope))) {
     throw new Error('O arquivo não corresponde à eleição presidencial oficial do 2º turno de 2026.')
   }
   if (typeof data.idg !== 'string' || !data.idg) {
@@ -113,6 +117,7 @@ export function parseTseResults(payload: unknown): ElectionSnapshot {
   const sections = object(data.s)
   const votes = object(data.v)
   return {
+    scope,
     id: data.idg,
     generatedAt: brazilTimestamp(data.dg, data.hg),
     candidates: [

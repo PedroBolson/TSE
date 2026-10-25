@@ -8,6 +8,14 @@ service cloud.firestore {
         allow read: if true;
         allow write: if false;
       }
+      match /regions/{region} {
+        allow read: if true;
+        allow write: if false;
+        match /partials/{partialId} {
+          allow read: if true;
+          allow write: if false;
+        }
+      }
     }
     match /{document=**} {
       allow read, write: if false;
