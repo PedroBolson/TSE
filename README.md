@@ -54,7 +54,7 @@ O histórico que já existia em cada navegador continua salvo na mesma origem lo
 
 Fechar a página ou desligar o computador não interrompe mais a coleta. Ao abrir o painel novamente, ele recebe as parciais salvas enquanto você estava fora.
 
-O botão **Exportar gráfico** baixa um PNG de 1600 × 1110 pixels, com evolução, votos e percentuais de cada candidato, totais, seções e horário da parcial. Exportar não apaga o histórico. A exportação funciona no navegador, sem serviços de imagem externos.
+O botão **Exportar gráfico** baixa um PNG de 1600 × 1110 pixels, com evolução, votos e percentuais de cada candidato, totais, seções e horário da parcial. A escala vertical do gráfico e da imagem se ajusta aos percentuais de todas as parciais exibidas, com margem nas bordas e uma faixa mínima de 2 pontos percentuais. Os limites aparecem no eixo e na legenda da escala. Exportar não apaga o histórico. A exportação funciona no navegador, sem serviços de imagem externos.
 
 ## Validar e publicar
 

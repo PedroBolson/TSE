@@ -1,4 +1,5 @@
 import type { Candidate, ElectionSnapshot, HistoryPoint } from './election.ts'
+import { formatAxisPercent, getChartScale } from './chartScale.ts'
 import { formatDate, formatNumber, formatPercent, formatShortTime, formatTime } from '../utils/format.ts'
 
 export const CHART_IMAGE_WIDTH = 1600
@@ -34,6 +35,8 @@ function candidateCard(candidate: Candidate, x: number) {
 }
 
 export function buildChartSvg(snapshot: ElectionSnapshot, history: readonly HistoryPoint[]): string {
+  const scale = getChartScale(history)
+  const [lower, upper] = scale.domain
   const left = 146
   const top = 484
   const width = 1328
@@ -44,7 +47,7 @@ export function buildChartSvg(snapshot: ElectionSnapshot, history: readonly Hist
   const end = last ? last.timestamp + (history.length === 1 ? 60_000 : 0) : 1
   const span = Math.max(end - start, 1)
   const xFor = (timestamp: number) => left + (timestamp - start) / span * width
-  const yFor = (percent: number) => top + (100 - percent) / 100 * height
+  const yFor = (percent: number) => top + (upper - percent) / (upper - lower) * height
   const parts = [
     `<svg xmlns="http://www.w3.org/2000/svg" width="${CHART_IMAGE_WIDTH}" height="${CHART_IMAGE_HEIGHT}" viewBox="0 0 ${CHART_IMAGE_WIDTH} ${CHART_IMAGE_HEIGHT}" font-family="Arial, Helvetica, sans-serif">`,
     '<title>Apuração presidencial de 2026: percentuais, votos e evolução</title>',
@@ -65,11 +68,11 @@ export function buildChartSvg(snapshot: ElectionSnapshot, history: readonly Hist
     text(1423, 437, 'Lula', 16, '#b4bec2'),
   ]
 
-  for (const percent of [0, 25, 50, 75, 100]) {
+  for (const percent of scale.ticks) {
     const y = yFor(percent)
     parts.push(
       `<line x1="${left}" y1="${y}" x2="${left + width}" y2="${y}" stroke="${percent === 50 ? '#596366' : '#2b3437'}" stroke-dasharray="4 6"/>`,
-      text(left - 18, y + 5, `${percent}%`, 15, '#879398', 'end'),
+      text(left - 18, y + 5, formatAxisPercent(percent), 15, '#879398', 'end'),
     )
   }
 
@@ -97,7 +100,7 @@ export function buildChartSvg(snapshot: ElectionSnapshot, history: readonly Hist
   const historyNote = history.length === 1 ? '1 parcial registrada. A evolução aparece com as próximas parciais.'
     : `${history.length} parciais registradas. Percentuais oficiais dos votos válidos.`
   parts.push(
-    text(100, 788, historyNote, 14, '#97a3a8'),
+    text(100, 788, historyNote + (history.length > 0 ? ` Escala automática: ${formatAxisPercent(lower)} a ${formatAxisPercent(upper)}.` : ''), 14, '#97a3a8'),
     panel(72, 840, 464, 154),
     panel(568, 840, 464, 154),
     panel(1064, 840, 464, 154),

@@ -1,8 +1,11 @@
 import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import type { HistoryPoint } from '../domain/election.ts'
+import { formatAxisPercent, getChartScale } from '../domain/chartScale.ts'
 import { formatPercent, formatShortTime, formatTime } from '../utils/format.ts'
 
 export function HistoryChart({ history }: { history: HistoryPoint[] }) {
+  const scale = getChartScale(history)
+  const scaleLabel = `Escala automática: ${formatAxisPercent(scale.domain[0])} a ${formatAxisPercent(scale.domain[1])}.`
   const first = history[0]
   const last = history.at(-1)
   const domain: [number, number] | undefined = first && last
@@ -22,7 +25,7 @@ export function HistoryChart({ history }: { history: HistoryPoint[] }) {
         <span><i className="legend-dot flavio-dot" />Flávio Bolsonaro</span>
         <span><i className="legend-dot lula-dot" />Lula</span>
       </div>
-      <div className="chart-frame" role="img" aria-label="Gráfico do histórico de percentuais oficiais da coleta na nuvem e deste navegador. Azul para Flávio Bolsonaro e coral para Lula. Escala de zero a cem por cento.">
+      <div className="chart-frame" role="img" aria-label={`Gráfico do histórico de percentuais oficiais da coleta na nuvem e deste navegador. Azul para Flávio Bolsonaro e coral para Lula. ${scaleLabel}`}>
         {history.length > 0 ? (
           <ResponsiveContainer width="100%" height="100%" minWidth={0}>
             <LineChart data={history} margin={{ top: 14, right: 15, left: -6, bottom: 8 }} accessibilityLayer>
@@ -34,11 +37,13 @@ export function HistoryChart({ history }: { history: HistoryPoint[] }) {
                 tick={{ fontSize: 14, fill: '#879398' }}
               />
               <YAxis
-                width={62} domain={[0, 100]} ticks={[0, 25, 50, 75, 100]}
-                tickFormatter={(value: number) => `${value}%`} tickLine={false}
+                width={68} domain={scale.domain} ticks={scale.ticks}
+                tickFormatter={formatAxisPercent} tickLine={false}
                 axisLine={false} tickMargin={10} tick={{ fontSize: 14, fill: '#879398' }}
               />
-              <ReferenceLine y={50} stroke="#596366" strokeDasharray="4 5" />
+              {scale.domain[0] <= 50 && scale.domain[1] >= 50 && (
+                <ReferenceLine y={50} stroke="#596366" strokeDasharray="4 5" />
+              )}
               <Tooltip
                 labelFormatter={(label) => `Parcial das ${formatTime(Number(label))}`}
                 formatter={(value, name) => [`${formatPercent(Number(value))}%`, name]}
@@ -57,6 +62,7 @@ export function HistoryChart({ history }: { history: HistoryPoint[] }) {
         ) : <div className="chart-empty">O gráfico começa com a primeira parcial com votos.</div>}
       </div>
       <p className="panel-note">
+        {history.length > 0 && <span className="chart-scale-note">{scaleLabel}</span>}
         {history.length === 1
           ? 'Primeira parcial registrada. A linha aparece quando chegar uma nova parcial.'
           : 'Histórico da coleta na nuvem e das parciais salvas neste navegador.'}

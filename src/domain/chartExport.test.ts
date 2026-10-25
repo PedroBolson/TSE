@@ -51,3 +51,14 @@ test('a imagem é autossuficiente e escapa texto antes de formar o SVG', () => {
   assert.ok(!svg.includes('<foreignObject'))
   assert.ok(!svg.includes('href='))
 })
+
+test('a exportação aproxima o eixo com a mesma faixa informada na imagem', () => {
+  const history = [{ ...point, flavio: 49.9, lula: 50.1 }, { ...point, id: 'next', timestamp: point.timestamp + 60_000, flavio: 50, lula: 50 }]
+  const svg = buildChartSvg(snapshot, history)
+  assert.ok(svg.includes('Escala automática: 49% a 51%.'))
+  assert.ok(svg.includes('49,5%'))
+  const lines = [...svg.matchAll(/<polyline points="([^" ]+)[^"\n]*"/g)]
+  const firstYs = lines.map((line) => Number(line[1].split(',')[1]))
+  assert.equal(firstYs.length, 2)
+  assert.ok(Math.abs(firstYs[0] - firstYs[1]) > 20)
+})
