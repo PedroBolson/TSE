@@ -48,7 +48,7 @@ export function buildChartSvg(snapshot: ElectionSnapshot, history: readonly Hist
   const parts = [
     `<svg xmlns="http://www.w3.org/2000/svg" width="${CHART_IMAGE_WIDTH}" height="${CHART_IMAGE_HEIGHT}" viewBox="0 0 ${CHART_IMAGE_WIDTH} ${CHART_IMAGE_HEIGHT}" font-family="Arial, Helvetica, sans-serif">`,
     '<title>Apuração presidencial de 2026: percentuais, votos e evolução</title>',
-    `<desc>Fonte: TSE. Parcial de ${escapeXml(formatDate(snapshot.generatedAt))} às ${escapeXml(formatTime(snapshot.generatedAt))}, horário de Brasília. Histórico de ${history.length} parciais observadas neste navegador.</desc>`,
+    `<desc>Fonte: TSE. Parcial de ${escapeXml(formatDate(snapshot.generatedAt))} às ${escapeXml(formatTime(snapshot.generatedAt))}, horário de Brasília. Histórico de ${history.length} parciais registradas no acompanhamento.</desc>`,
     `<rect width="${CHART_IMAGE_WIDTH}" height="${CHART_IMAGE_HEIGHT}" fill="#111518"/>`,
     text(72, 60, 'ELEIÇÕES 2026  /  BRASIL  /  2º TURNO', 15, '#b8dfb2'),
     text(72, 111, 'Apuração presidencial', 38, '#edf0ed', 'start', 600),
@@ -95,7 +95,7 @@ export function buildChartSvg(snapshot: ElectionSnapshot, history: readonly Hist
   }
 
   const historyNote = history.length === 1 ? '1 parcial registrada. A evolução aparece com as próximas parciais.'
-    : `${history.length} parciais registradas neste navegador. Percentuais oficiais dos votos válidos.`
+    : `${history.length} parciais registradas. Percentuais oficiais dos votos válidos.`
   parts.push(
     text(100, 788, historyNote, 14, '#97a3a8'),
     panel(72, 840, 464, 154),
@@ -111,7 +111,7 @@ export function buildChartSvg(snapshot: ElectionSnapshot, history: readonly Hist
     text(1092, 927, `${formatPercent(snapshot.sectionsPercent)}%`, 36, '#b8dfb2', 'start', 500),
     text(1092, 969, `${formatNumber(snapshot.countedSections)} de ${formatNumber(snapshot.totalSections)} seções`, 14, '#97a3a8'),
     text(72, 1041, 'Fonte: Tribunal Superior Eleitoral · resultados.tse.jus.br', 16, '#b4bec2'),
-    text(72, 1073, 'Histórico observado localmente. O horário da parcial não é o horário da exportação.', 14, '#879398'),
+    text(72, 1073, 'Histórico de parciais registradas. O horário da parcial não é o horário da exportação.', 14, '#879398'),
     '</svg>',
   )
   return parts.join('\n')

@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { HISTORY_STORAGE_KEY, MAX_RETRY_INTERVAL_MS, REFRESH_INTERVAL_MS } from '../config.ts'
-import { appendHistory, newerSnapshot, restoreHistory } from '../domain/election.ts'
+import { HISTORY_STORAGE_KEY } from '../config.ts'
+import { mergeCloudHistory, newerSnapshot, restoreHistory } from '../domain/election.ts'
 import type { ElectionSnapshot } from '../domain/election.ts'
-import { fetchElectionResults } from '../services/tse.ts'
+import { readLatestFromServer, subscribeToElection } from '../services/electionStore.ts'
+import type { CollectorStatus } from '../services/electionStore.ts'
 
 function savedHistory() {
   try {
@@ -16,79 +17,70 @@ export function useElectionResults() {
   const [snapshot, setSnapshot] = useState<ElectionSnapshot | null>(null)
   const [history, setHistory] = useState(savedHistory)
   const [isFetching, setIsFetching] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [connectionError, setConnectionError] = useState<string | null>(null)
+  const [collectorError, setCollectorError] = useState<string | null>(null)
+  const [isFromCache, setIsFromCache] = useState(true)
   const [lastSuccessAt, setLastSuccessAt] = useState<number | null>(null)
-  const [nextFetchAt, setNextFetchAt] = useState<number | null>(null)
-  const fetchRef = useRef<() => void>(() => {})
   const snapshotRef = useRef<ElectionSnapshot | null>(null)
+  const refreshRef = useRef<() => void>(() => {})
 
   useEffect(() => {
     try {
       localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(history))
     } catch {
-      // A consulta continua funcionando mesmo se o navegador bloquear o armazenamento.
+      // A assinatura da nuvem continua mesmo sem armazenamento no navegador.
     }
   }, [history])
 
   useEffect(() => {
     let disposed = false
-    let timer: ReturnType<typeof setTimeout> | undefined
-    let controller: AbortController | null = null
-    let consecutiveFailures = 0
+    let manualRefreshRunning = false
 
-    async function run() {
-      if (disposed || controller) return
-      clearTimeout(timer)
-      controller = new AbortController()
-      setIsFetching(true)
-      setNextFetchAt(null)
-      let delay = REFRESH_INTERVAL_MS
-
-      try {
-        const incoming = await fetchElectionResults(controller.signal)
-        if (disposed) return
-        const accepted = newerSnapshot(snapshotRef.current, incoming)
+    function acceptResults(results: ElectionSnapshot[]) {
+      if (disposed) return
+      const latest = results.at(-1)
+      if (latest) {
+        const accepted = newerSnapshot(snapshotRef.current, latest)
         snapshotRef.current = accepted
         setSnapshot(accepted)
-        setHistory((previous) => appendHistory(previous, accepted))
-        setLastSuccessAt(Date.now())
-        setError(null)
-        consecutiveFailures = 0
-      } catch (failure) {
-        if (disposed) return
-        consecutiveFailures += 1
-        delay = Math.min(
-          REFRESH_INTERVAL_MS * 2 ** Math.min(consecutiveFailures - 1, 3),
-          MAX_RETRY_INTERVAL_MS,
-        )
-        const message = failure instanceof Error && failure.name !== 'TypeError'
-          ? failure.name === 'TimeoutError'
-            ? 'O TSE demorou para responder. Tentaremos de novo automaticamente.'
-            : failure.message
-          : 'Não foi possível consultar o TSE. Confira a conexão; tentaremos de novo automaticamente.'
-        setError(message)
-      } finally {
-        controller = null
-        if (!disposed) {
-          setIsFetching(false)
-          if (!snapshotRef.current?.finished) {
-            setNextFetchAt(Date.now() + delay)
-            timer = setTimeout(() => void run(), delay)
-          }
-        }
+        setHistory((previous) => mergeCloudHistory(previous, results))
       }
+      setIsFetching(false)
+    }
+    function acceptStatus(status: CollectorStatus, fromCache: boolean) {
+      if (disposed) return
+      setLastSuccessAt(status.lastSuccessAt)
+      setCollectorError(status.error)
+      setIsFromCache(fromCache)
+      if (!fromCache) setConnectionError(null)
+    }
+    function reportError() {
+      if (disposed) return
+      setIsFetching(false)
+      setConnectionError('Não foi possível sincronizar com o Firestore. Os dados já recebidos continuam visíveis.')
     }
 
-    fetchRef.current = () => void run()
-    void run()
+    const unsubscribe = subscribeToElection({ onResults: acceptResults, onStatus: acceptStatus, onError: reportError })
+    refreshRef.current = () => {
+      if (disposed || manualRefreshRunning) return
+      manualRefreshRunning = true
+      setIsFetching(true)
+      void readLatestFromServer().then(({ results, status }) => {
+        if (disposed) return
+        acceptResults(results)
+        acceptStatus(status, false)
+      }).catch(reportError).finally(() => {
+        manualRefreshRunning = false
+        if (!disposed) setIsFetching(false)
+      })
+    }
     return () => {
       disposed = true
-      clearTimeout(timer)
-      controller?.abort()
-      fetchRef.current = () => {}
+      unsubscribe()
+      refreshRef.current = () => {}
     }
   }, [])
 
-  const refresh = useCallback(() => fetchRef.current(), [])
-  return { snapshot, history, isFetching, error, lastSuccessAt, nextFetchAt, refresh }
+  const refresh = useCallback(() => refreshRef.current(), [])
+  return { snapshot, history, isFetching, error: connectionError ?? collectorError, lastSuccessAt, isFromCache, refresh }
 }

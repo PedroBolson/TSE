@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { appendHistory, newerSnapshot, parseTseResults, restoreHistory } from './election.ts'
+import { appendHistory, mergeCloudHistory, newerSnapshot, parseTseResults, restoreHistory } from './election.ts'
 
 function fixture() {
   return {
@@ -109,4 +109,16 @@ test('restaura histórico válido sem travar com armazenamento corrompido', () =
   assert.deepEqual(restoreHistory(JSON.stringify(history)), history)
   assert.deepEqual(restoreHistory('não é json'), [])
   assert.deepEqual(restoreHistory(JSON.stringify([null, {}, { ...history[0], lula: 101 }])), [])
+})
+
+test('combina parciais da nuvem com o histórico local, preenchendo lacunas sem perder pontos', () => {
+  const first = parseTseResults(fixture())
+  const third = { ...first, id: 'third', generatedAt: first.generatedAt + 120_000 }
+  const local = appendHistory(appendHistory([], first), third)
+  const second = { ...first, id: 'second', generatedAt: first.generatedAt + 60_000 }
+  const merged = mergeCloudHistory(local, [first, second, third])
+  assert.deepEqual(merged.map((point) => point.id), [first.id, 'second', 'third'])
+  assert.equal(merged[1].flavioVotes, 142169)
+  assert.equal(local.length, 2)
+  assert.equal(mergeCloudHistory(merged, [first, second, third]).length, 3)
 })

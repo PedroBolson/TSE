@@ -22,7 +22,7 @@ export function HistoryChart({ history }: { history: HistoryPoint[] }) {
         <span><i className="legend-dot flavio-dot" />Flávio Bolsonaro</span>
         <span><i className="legend-dot lula-dot" />Lula</span>
       </div>
-      <div className="chart-frame" role="img" aria-label="Gráfico dos percentuais oficiais observados desde a abertura do painel. Azul para Flávio Bolsonaro e coral para Lula. Escala de zero a cem por cento.">
+      <div className="chart-frame" role="img" aria-label="Gráfico do histórico de percentuais oficiais da coleta na nuvem e deste navegador. Azul para Flávio Bolsonaro e coral para Lula. Escala de zero a cem por cento.">
         {history.length > 0 ? (
           <ResponsiveContainer width="100%" height="100%" minWidth={0}>
             <LineChart data={history} margin={{ top: 14, right: 15, left: -18, bottom: 8 }} accessibilityLayer>
@@ -59,7 +59,7 @@ export function HistoryChart({ history }: { history: HistoryPoint[] }) {
       <p className="panel-note">
         {history.length === 1
           ? 'Primeira parcial registrada. A linha aparece quando chegar uma nova parcial.'
-          : 'Histórico observado neste navegador. Cada ponto corresponde a uma nova parcial do TSE.'}
+          : 'Histórico da coleta na nuvem e das parciais salvas neste navegador.'}
       </p>
     </section>
   )

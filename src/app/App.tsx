@@ -9,20 +9,19 @@ import { downloadChart } from '../utils/downloadChart.ts'
 import { elapsedLabel, formatDate, formatNumber, formatPercent, formatTime } from '../utils/format.ts'
 
 export function App() {
-  const { snapshot, history, isFetching, error, lastSuccessAt, nextFetchAt, refresh } = useElectionResults()
+  const { snapshot, history, isFetching, error, lastSuccessAt, isFromCache, refresh } = useElectionResults()
   const now = useNow()
   const [isExporting, setIsExporting] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
-  const countdown = nextFetchAt ? Math.max(0, Math.ceil((nextFetchAt - now) / 1_000)) : null
   const isStale = snapshot && !snapshot.finished && now - snapshot.generatedAt >= STALE_AFTER_MS
   const [flavio, lula] = snapshot?.candidates ?? []
   const leader = flavio && lula && flavio.votes !== lula.votes ? (flavio.votes > lula.votes ? flavio : lula) : null
   const difference = flavio && lula ? Math.abs(flavio.votes - lula.votes) : 0
   const percentDifference = flavio && lula ? Math.abs(flavio.percent - lula.percent) : 0
 
-  const statusText = error ? 'Consulta indisponível'
+  const statusText = error ? 'Sincronização indisponível'
     : snapshot?.finished ? 'Totalização concluída'
-    : !snapshot ? 'Conectando ao TSE'
+    : !snapshot ? 'Aguardando coleta na nuvem'
     : snapshot.countedSections === 0 ? 'Aguardando os primeiros votos'
     : isStale ? 'Aguardando nova parcial' : 'Apuração em andamento'
 
@@ -72,9 +71,9 @@ export function App() {
           <div className="update-description">
             {snapshot?.finished ? <CircleCheck size={15} /> : <Clock3 size={15} />}
             <span>{snapshot?.finished ? 'Resultado final informado pelo TSE'
-              : isFetching ? 'Consultando os dados oficiais…'
-              : `Próxima consulta em ${countdown ?? 0}s`}</span>
-            {!snapshot?.finished && <span className="toolbar-secondary">Atualização automática a cada 60s</span>}
+              : isFetching ? 'Sincronizando os dados…'
+              : isFromCache ? 'Reconectando ao Firestore…' : 'Firestore em tempo real'}</span>
+            {!snapshot?.finished && <span className="toolbar-secondary">Coleta na nuvem a cada 60s</span>}
           </div>
           <div className="toolbar-actions">
             <button className="refresh-button" onClick={() => void exportChart()} disabled={!snapshot || isExporting}
@@ -84,7 +83,7 @@ export function App() {
             </button>
             <button className="refresh-button" onClick={refresh} disabled={isFetching}>
               <RefreshCw size={14} className={isFetching ? 'spin' : ''} />
-              <span>{isFetching ? 'Consultando' : 'Atualizar agora'}</span>
+              <span>{isFetching ? 'Sincronizando' : 'Sincronizar agora'}</span>
             </button>
           </div>
         </div>
@@ -104,7 +103,7 @@ export function App() {
         {isStale && !error && (
           <div className="notice stale-notice" role="status">
             <Clock3 size={16} />
-            <p>O TSE ainda entrega uma parcial de <strong>{elapsedLabel(now - snapshot.generatedAt)} atrás</strong>. O painel segue consultando automaticamente.</p>
+            <p>A última parcial recebida é de <strong>{elapsedLabel(now - snapshot.generatedAt)} atrás</strong>. A coleta continua na nuvem e novas parciais aparecem automaticamente.</p>
           </div>
         )}
 
@@ -131,9 +130,9 @@ export function App() {
         ) : (
           <section className="initial-state" aria-busy={isFetching}>
             <ChartNoAxesColumnIncreasing size={35} strokeWidth={1.3} />
-            <h2>{error ? 'Aguardando conexão com o TSE' : 'Buscando a primeira parcial'}</h2>
-            <p>{error ? 'A consulta será repetida automaticamente. Você também pode tentar atualizar agora.'
-              : 'Os resultados aparecem assim que a fonte oficial responder.'}</p>
+            <h2>{error ? 'Aguardando conexão com o Firestore' : 'Aguardando a primeira parcial na nuvem'}</h2>
+            <p>{error ? 'A sincronização será retomada quando a conexão voltar. Você também pode tentar sincronizar agora.'
+              : 'Os resultados aparecem automaticamente assim que o coletor registrar uma parcial do TSE.'}</p>
           </section>
         )}
 
@@ -143,7 +142,7 @@ export function App() {
             <p>Resultados parciais podem mudar. O horário acima é o da geração dos dados.</p>
           </div>
           <div className="footer-meta">
-            <span>Última consulta: <strong className="tabular">{lastSuccessAt ? formatTime(lastSuccessAt) : '—'}</strong></span>
+            <span>Última consulta na nuvem: <strong className="tabular">{lastSuccessAt ? formatTime(lastSuccessAt) : '—'}</strong></span>
             <a href={TSE_RESULTS_URL} target="_blank" rel="noreferrer">Ver dados da fonte <ArrowUpRight size={13} /></a>
           </div>
         </footer>

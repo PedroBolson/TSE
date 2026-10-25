@@ -181,3 +181,20 @@ export function restoreHistory(serialized: string | null): HistoryPoint[] {
     return []
   }
 }
+
+export function mergeCloudHistory(local: HistoryPoint[], snapshots: readonly ElectionSnapshot[]): HistoryPoint[] {
+  const byTimestamp = new Map(local.map((point) => [point.timestamp, point]))
+  for (const snapshot of snapshots) {
+    if (snapshot.countedSections === 0) continue
+    byTimestamp.set(snapshot.generatedAt, {
+      id: snapshot.id,
+      timestamp: snapshot.generatedAt,
+      flavio: snapshot.candidates[0].percent,
+      lula: snapshot.candidates[1].percent,
+      flavioVotes: snapshot.candidates[0].votes,
+      lulaVotes: snapshot.candidates[1].votes,
+      sectionsPercent: snapshot.sectionsPercent,
+    })
+  }
+  return [...byTimestamp.values()].sort((a, b) => a.timestamp - b.timestamp).slice(-HISTORY_LIMIT)
+}
