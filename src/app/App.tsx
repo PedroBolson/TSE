@@ -5,12 +5,14 @@ import { CountingProgress } from '../components/CountingProgress.tsx'
 import { HistoryChart } from '../components/HistoryChart.tsx'
 import { useElectionResults } from '../hooks/useElectionResults.ts'
 import { useNow } from '../hooks/useNow.ts'
-import { downloadHistory } from '../utils/downloadHistory.ts'
+import { downloadChart } from '../utils/downloadChart.ts'
 import { elapsedLabel, formatDate, formatNumber, formatPercent, formatTime } from '../utils/format.ts'
 
 export function App() {
   const { snapshot, history, isFetching, error, lastSuccessAt, nextFetchAt, refresh } = useElectionResults()
   const now = useNow()
+  const [isExporting, setIsExporting] = useState(false)
+  const [exportError, setExportError] = useState<string | null>(null)
   const countdown = nextFetchAt ? Math.max(0, Math.ceil((nextFetchAt - now) / 1_000)) : null
   const isStale = snapshot && !snapshot.finished && now - snapshot.generatedAt >= STALE_AFTER_MS
   const [flavio, lula] = snapshot?.candidates ?? []
@@ -23,6 +25,19 @@ export function App() {
     : !snapshot ? 'Conectando ao TSE'
     : snapshot.countedSections === 0 ? 'Aguardando os primeiros votos'
     : isStale ? 'Aguardando nova parcial' : 'Apuração em andamento'
+
+  async function exportChart() {
+    if (!snapshot || isExporting) return
+    setIsExporting(true)
+    setExportError(null)
+    try {
+      await downloadChart(snapshot, history)
+    } catch {
+      setExportError('Não foi possível gerar a imagem. Tente exportar novamente.')
+    } finally {
+      setIsExporting(false)
+    }
+  }
 
   return (
     <div className="app-shell">
@@ -62,10 +77,10 @@ export function App() {
             {!snapshot?.finished && <span className="toolbar-secondary">Atualização automática a cada 60s</span>}
           </div>
           <div className="toolbar-actions">
-            <button className="refresh-button" onClick={() => downloadHistory(history)} disabled={history.length === 0}
-              title={`Baixar as ${history.length} parciais salvas neste navegador`}>
+            <button className="refresh-button" onClick={() => void exportChart()} disabled={!snapshot || isExporting}
+              title="Baixar imagem PNG com evolução, percentuais e votos">
               <Download size={14} />
-              <span>Exportar CSV</span>
+              <span>{isExporting ? 'Gerando imagem…' : 'Exportar gráfico'}</span>
             </button>
             <button className="refresh-button" onClick={refresh} disabled={isFetching}>
               <RefreshCw size={14} className={isFetching ? 'spin' : ''} />
@@ -74,6 +89,12 @@ export function App() {
           </div>
         </div>
 
+        {exportError && (
+          <div className="notice error-notice" role="alert">
+            <CircleAlert size={17} />
+            <p>{exportError}</p>
+          </div>
+        )}
         {error && (
           <div className="notice error-notice" role="alert">
             <CircleAlert size={17} />
@@ -130,3 +151,4 @@ export function App() {
     </div>
   )
 }
+import { useState } from 'react'

@@ -22,14 +22,14 @@ npm run build  # verifica os tipos e gera dist/
 
 - A primeira consulta ocorre ao abrir a página; as seguintes, 60 segundos depois da conclusão de cada consulta, sem sobreposição.
 - O botão **Atualizar agora** permite uma consulta manual.
-- O botão **Exportar CSV** baixa as parciais salvas neste navegador, com identificador do TSE, data e hora de Brasília, votos e percentuais dos dois candidatos e percentual de seções totalizadas. O CSV usa UTF-8, separador `;` e vírgula decimal para abrir em planilhas em português. A exportação não apaga o histórico.
+- O botão **Exportar gráfico** baixa uma imagem PNG de 1600 × 1110 pixels, com o gráfico de evolução, percentuais e votos dos dois candidatos, total de votos contabilizados, votos válidos, brancos, nulos e avanço das seções. A imagem informa a data e a hora da parcial em Brasília e usa todas as parciais salvas no navegador para o gráfico. A exportação não apaga o histórico e funciona localmente, sem serviços de imagem externos.
 - A data e a hora em destaque são as da **geração do arquivo pelo TSE**, em Brasília. A hora da última consulta bem-sucedida aparece no rodapé.
 - Se a parcial tiver mais de 3 minutos, aparece uma indicação de que o painel aguarda nova parcial. Isso não é uma estimativa de atraso garantido pelo TSE.
 - Em falhas de rede ou resposta inválida, a última parcial permanece visível. Novas tentativas usam intervalos de 60, 120, 240 e até 300 segundos. Cada requisição tem limite de 15 segundos.
 - As consultas automáticas param quando o próprio TSE informa a totalização final (`and=f`).
 - Os percentuais são os publicados pelo TSE para votos válidos; não são recalculados sobre o total que inclui brancos e nulos.
 - O gráfico registra novas parciais observadas neste navegador. O histórico é salvo em `localStorage`, limitado aos últimos 720 pontos. Ele não representa o histórico completo da eleição e não há dados fictícios ou projeções.
-- O registro fica somente neste navegador e nesta origem local. Fechar a página interrompe a coleta, mas preserva o que já foi salvo; limpar os dados do navegador remove o histórico. Registros anteriores à função de exportação podem não ter a quantidade de votos: nesse caso, os campos ficam vazios no CSV. A quantidade é preenchida se a mesma parcial voltar a ser consultada.
+- O registro fica somente neste navegador e nesta origem local. Fechar a página interrompe a coleta, mas preserva o que já foi salvo; limpar os dados do navegador remove o histórico. Registros antigos mantêm seus percentuais; os votos destacados na imagem são os da parcial atual.
 - O navegador e o sistema operacional podem reduzir a frequência de execução quando a aba ou o computador estiverem suspensos.
 
 ## Organização
