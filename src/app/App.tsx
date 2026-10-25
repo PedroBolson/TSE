@@ -1,0 +1,132 @@
+import { ArrowUpRight, ChartNoAxesColumnIncreasing, CircleAlert, CircleCheck, Clock3, Download, ExternalLink, RefreshCw } from 'lucide-react'
+import { STALE_AFTER_MS, TSE_PORTAL_URL, TSE_RESULTS_URL } from '../config.ts'
+import { CandidateCard } from '../components/CandidateCard.tsx'
+import { CountingProgress } from '../components/CountingProgress.tsx'
+import { HistoryChart } from '../components/HistoryChart.tsx'
+import { useElectionResults } from '../hooks/useElectionResults.ts'
+import { useNow } from '../hooks/useNow.ts'
+import { downloadHistory } from '../utils/downloadHistory.ts'
+import { elapsedLabel, formatDate, formatNumber, formatPercent, formatTime } from '../utils/format.ts'
+
+export function App() {
+  const { snapshot, history, isFetching, error, lastSuccessAt, nextFetchAt, refresh } = useElectionResults()
+  const now = useNow()
+  const countdown = nextFetchAt ? Math.max(0, Math.ceil((nextFetchAt - now) / 1_000)) : null
+  const isStale = snapshot && !snapshot.finished && now - snapshot.generatedAt >= STALE_AFTER_MS
+  const [flavio, lula] = snapshot?.candidates ?? []
+  const leader = flavio && lula && flavio.votes !== lula.votes ? (flavio.votes > lula.votes ? flavio : lula) : null
+  const difference = flavio && lula ? Math.abs(flavio.votes - lula.votes) : 0
+  const percentDifference = flavio && lula ? Math.abs(flavio.percent - lula.percent) : 0
+
+  const statusText = error ? 'Consulta indisponível'
+    : snapshot?.finished ? 'Totalização concluída'
+    : !snapshot ? 'Conectando ao TSE'
+    : snapshot.countedSections === 0 ? 'Aguardando os primeiros votos'
+    : isStale ? 'Aguardando nova parcial' : 'Apuração em andamento'
+
+  return (
+    <div className="app-shell">
+      <header className="topbar">
+        <a className="brand" href="/" aria-label="Apuração, início">
+          <span className="brand-icon"><ChartNoAxesColumnIncreasing size={22} strokeWidth={1.8} /></span>
+          <span>apuração<span className="brand-period">.</span></span>
+        </a>
+        <div className="topbar-right">
+          <span className={`status-pill ${error || isStale ? 'warning' : snapshot?.finished ? 'complete' : ''}`}>
+            <span className="status-dot" />{statusText}
+          </span>
+          <span className="desktop-detail">Dados oficiais · TSE</span>
+        </div>
+      </header>
+
+      <main>
+        <section className="page-heading" aria-label="Eleição e horário da parcial">
+          <div>
+            <p className="eyebrow">BRASIL <span>/</span> 2º TURNO <span>/</span> ELEIÇÕES 2026</p>
+            <h1>Presidente da República</h1>
+            <p className="page-subtitle">Os números da eleição, em uma tela.</p>
+          </div>
+          <div className="source-time">
+            <span className="eyebrow">PARCIAL GERADA PELO TSE</span>
+            <strong className="tabular">{snapshot ? formatTime(snapshot.generatedAt) : '—:—:—'}</strong>
+            <span>{snapshot ? formatDate(snapshot.generatedAt) : 'Aguardando consulta'} · Brasília</span>
+          </div>
+        </section>
+
+        <div className="update-toolbar">
+          <div className="update-description">
+            {snapshot?.finished ? <CircleCheck size={15} /> : <Clock3 size={15} />}
+            <span>{snapshot?.finished ? 'Resultado final informado pelo TSE'
+              : isFetching ? 'Consultando os dados oficiais…'
+              : `Próxima consulta em ${countdown ?? 0}s`}</span>
+            {!snapshot?.finished && <span className="toolbar-secondary">Atualização automática a cada 60s</span>}
+          </div>
+          <div className="toolbar-actions">
+            <button className="refresh-button" onClick={() => downloadHistory(history)} disabled={history.length === 0}
+              title={`Baixar as ${history.length} parciais salvas neste navegador`}>
+              <Download size={14} />
+              <span>Exportar CSV</span>
+            </button>
+            <button className="refresh-button" onClick={refresh} disabled={isFetching}>
+              <RefreshCw size={14} className={isFetching ? 'spin' : ''} />
+              <span>{isFetching ? 'Consultando' : 'Atualizar agora'}</span>
+            </button>
+          </div>
+        </div>
+
+        {error && (
+          <div className="notice error-notice" role="alert">
+            <CircleAlert size={17} />
+            <p>{error}{snapshot && ' A última parcial recebida continua visível.'}</p>
+          </div>
+        )}
+        {isStale && !error && (
+          <div className="notice stale-notice" role="status">
+            <Clock3 size={16} />
+            <p>O TSE ainda entrega uma parcial de <strong>{elapsedLabel(now - snapshot.generatedAt)} atrás</strong>. O painel segue consultando automaticamente.</p>
+          </div>
+        )}
+
+        {snapshot ? (
+          <>
+            <div className="candidates-grid">
+              {snapshot.candidates.map((candidate) => <CandidateCard key={candidate.key} candidate={candidate} />)}
+            </div>
+
+            <section className="margin-summary" aria-label="Diferença entre os candidatos">
+              <div>
+                <span className={`summary-icon ${leader?.key ?? ''}`}><ArrowUpRight size={17} /></span>
+                <p>{leader ? <><strong>{leader.name}</strong> está à frente por <strong className="tabular">{formatNumber(difference)} votos</strong></>
+                  : snapshot.totalVotes > 0 ? 'Os candidatos estão empatados nesta parcial.' : 'Aguardando os primeiros votos totalizados.'}</p>
+              </div>
+              <span>{leader ? <><strong className="tabular">{formatPercent(percentDifference)} p.p.</strong> de diferença</> : 'Percentuais oficiais dos votos válidos'}</span>
+            </section>
+
+            <div className="details-grid">
+              <HistoryChart history={history} />
+              <CountingProgress snapshot={snapshot} />
+            </div>
+          </>
+        ) : (
+          <section className="initial-state" aria-busy={isFetching}>
+            <ChartNoAxesColumnIncreasing size={35} strokeWidth={1.3} />
+            <h2>{error ? 'Aguardando conexão com o TSE' : 'Buscando a primeira parcial'}</h2>
+            <p>{error ? 'A consulta será repetida automaticamente. Você também pode tentar atualizar agora.'
+              : 'Os resultados aparecem assim que a fonte oficial responder.'}</p>
+          </section>
+        )}
+
+        <footer className="page-footer">
+          <div>
+            <a href={TSE_PORTAL_URL} target="_blank" rel="noreferrer">Fonte: Tribunal Superior Eleitoral <ExternalLink size={12} /></a>
+            <p>Resultados parciais podem mudar. O horário acima é o da geração dos dados.</p>
+          </div>
+          <div className="footer-meta">
+            <span>Última consulta: <strong className="tabular">{lastSuccessAt ? formatTime(lastSuccessAt) : '—'}</strong></span>
+            <a href={TSE_RESULTS_URL} target="_blank" rel="noreferrer">Ver dados da fonte <ArrowUpRight size={13} /></a>
+          </div>
+        </footer>
+      </main>
+    </div>
+  )
+}
